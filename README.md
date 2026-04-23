@@ -2,7 +2,7 @@
 
 ## Team members
 
-Leung Cheuk Hang(3036600284), 
+Leung Cheuk Hang(3036600284), Pang Ching Nam Bosco (3036529806), 
 
 ## Application Description
 
