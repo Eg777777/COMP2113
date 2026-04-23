@@ -44,13 +44,7 @@ No external dependencies are required.
 ### Compilation
 
 ```bash
-g++ -o wordle wordle.cpp
-```
-
-Or with optimizations:
-
-```bash
-g++ -O2 -o wordle wordle.cpp
+make wordle
 ```
 
 ### Execution
