@@ -19,6 +19,7 @@ A command-line implementation of the popular word-guessing game Wordle, written 
   - Ensures guesses are exactly 5 characters long
   - Accepts only alphabetic characters
   - Converts input to lowercase automatically
+- **Hint System**: Provides a maximum of two hints to players
 - **Replay Option**: Players can choose to play multiple rounds without restarting the program
 - **20-Word Vocabulary**: Balanced word selection including common words from various categories
 - **Graceful EOF Handling**: Properly exits when EOF is encountered
