@@ -1,5 +1,9 @@
 # Wordle Game
 
+## Team members
+
+Leung Cheuk Hang(3036600284), 
+
 ## Application Description
 
 A command-line implementation of the popular word-guessing game Wordle, written in C++. Players have 6 attempts to guess a random 5-letter word from a predefined word list. After each guess, the game provides feedback indicating which letters are correct and in the right position, which letters exist in the word but in the wrong position, and which letters are not in the word at all.
