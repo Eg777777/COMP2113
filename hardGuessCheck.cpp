@@ -2,7 +2,6 @@
 
 #include "hardGuessCheck.h"
 
-#include <algorithm>
 #include <string>
 #include <vector>
 
