@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <ctime>
 #include <algorithm>
+#include <hardGuessCheck.h>
 
 using namespace std;
 
