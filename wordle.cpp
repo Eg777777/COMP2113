@@ -4,17 +4,13 @@
 #include <cstdlib>
 #include <ctime>
 #include <algorithm>
-#include <hardGuessCheck.h>
+#include "hardGuessCheck.h"
+#include "wordLists.h"
 
 using namespace std;
 
 // Word list for the game
-vector<string> wordList = {
-    "apple", "grape", "storm", "plant", "dream",
-    "music", "dance", "paint", "sunny", "throw",
-    "bread", "water", "green", "stone", "party",
-    "chess", "brain", "heart", "ocean", "flame"
-};
+
 
 string getRandomWord() {
     return wordList[rand() % wordList.size()];
