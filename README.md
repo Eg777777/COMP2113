@@ -2,7 +2,7 @@
 
 ## Team members
 
-Leung Cheuk Hang (3036600284), Pang Ching Nam Bosco (3036529806), Yu Wai In Teresa (3036599265)
+Leung Cheuk Hang (3036600284), Pang Ching Nam Bosco (3036529806), Yu Wai In Teresa (3036599265), Wang Xuran (3036664723)
 
 ## Application Description
 
