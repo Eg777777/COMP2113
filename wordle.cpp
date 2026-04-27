@@ -1,26 +1,115 @@
 #include <iostream>
+#include <fstream>
+#include <iomanip>
 #include <vector>
 #include <string>
 #include <cstdlib>
 #include <ctime>
 #include <algorithm>
+#include <cstring>
 #include "hardGuessCheck.h"
 #include "wordLists.h"
+#include "difficulty.h"
 
 using namespace std;
 
-// Word list for the game
+namespace {
 
+const char* const kStatsFile = "wordle_stats.txt";
 
-string getRandomWord() {
-    return wordList[rand() % wordList.size()];
+struct Statistics {
+    int played = 0;
+    int wins = 0;
+    int currentStreak = 0;
+    int maxStreak = 0;
+    int dist[6] = {0, 0, 0, 0, 0, 0};
+};
+
+struct GameResult {
+    bool gameFinished;
+    bool won;
+    int numGuesses;
+    GameResult() : gameFinished(false), won(false), numGuesses(0) {}
+    GameResult(bool f, bool w, int g) : gameFinished(f), won(w), numGuesses(g) {}
+};
+
+void loadStats(Statistics& s) {
+    ifstream in(kStatsFile);
+    if (!in) return;
+    in >> s.played >> s.wins >> s.currentStreak >> s.maxStreak;
+    for (int i = 0; i < 6; i++) in >> s.dist[i];
+}
+
+void saveStats(const Statistics& s) {
+    ofstream out(kStatsFile);
+    if (!out) return;
+    out << s.played << " " << s.wins << " " << s.currentStreak << " " << s.maxStreak << "\n";
+    for (int i = 0; i < 6; i++) {
+        if (i) out << " ";
+        out << s.dist[i];
+    }
+    out << "\n";
+}
+
+void updateStats(Statistics& s, const GameResult& r) {
+    if (!r.gameFinished) return;
+    s.played++;
+    if (r.won) {
+        s.wins++;
+        s.currentStreak++;
+        if (s.currentStreak > s.maxStreak) s.maxStreak = s.currentStreak;
+        if (r.numGuesses >= 1 && r.numGuesses <= 6)
+            s.dist[r.numGuesses - 1]++;
+    } else {
+        s.currentStreak = 0;
+    }
+}
+
+int winPercent(int played, int wins) {
+    if (played <= 0) return 0;
+    return (100 * wins + played / 2) / played;
+}
+
+void printStatistics(const Statistics& s) {
+    cout << "\n--- STATISTICS ---" << endl;
+    int pct = winPercent(s.played, s.wins);
+    cout << "Played: " << s.played
+         << "   Win %: " << pct
+         << "   Current Streak: " << s.currentStreak
+         << "   Max Streak: " << s.maxStreak << endl;
+}
+
+void printGuessDistribution(const Statistics& s, int highlightNumGuesses) {
+    const int kBarMax = 20;
+    int maxC = 0;
+    for (int i = 0; i < 6; i++) if (s.dist[i] > maxC) maxC = s.dist[i];
+    if (maxC < 1) maxC = 1;
+
+    const char* reset = "\033[0m";
+    const char* green = "\033[32;1m";
+    const char* gray = "\033[90m";
+
+    cout << "\nGUESS DISTRIBUTION" << endl;
+    for (int i = 0; i < 6; i++) {
+        int label = i + 1;
+        int count = s.dist[i];
+        int barLen = (count == 0) ? 1 : (count * kBarMax) / maxC;
+        if (barLen < 1) barLen = 1;
+        if (barLen > kBarMax) barLen = kBarMax;
+        bool hi = (highlightNumGuesses == label);
+        const char* barColor = hi ? green : gray;
+        string barStr(barLen, '#');
+        cout << label << "  " << barColor << barStr << " " << count << reset << endl;
+    }
+}
+
 }
 
 void hint(string word, vector<char> green) {
     for (int i = 0; i < 5; i++) {
         bool alrGuessed = false;
-        for (vector<char>::iterator it = green.begin(); it != green.end(); ++it) {
-            if (word[i] == (*it)) alrGuessed = true;
+        for (char c : green) {
+            if (word[i] == c) { alrGuessed = true; break; }
         }
         if (!alrGuessed) {
             cout << "The letter in position " << i+1 << " is " << word[i] << endl;
@@ -29,13 +118,11 @@ void hint(string word, vector<char> green) {
     }
 }
 
-string checkGuess(const string& targetWord, const string& guess, 
+string checkGuess(const string& targetWord, const string& guess,
     vector<char>& green, vector<char>& yellow, vector<char>& gray) {
     string result(5, ' ');
     vector<bool> targetUsed(5, false);
     vector<bool> guessProcessed(5, false);
-
-    // First pass: check for correct positions (G)
     for (int i = 0; i < 5; i++) {
         if (guess[i] == targetWord[i]) {
             green.push_back(guess[i]);
@@ -44,8 +131,6 @@ string checkGuess(const string& targetWord, const string& guess,
             guessProcessed[i] = true;
         }
     }
-
-    // Second pass: check for correct letters in wrong positions (Y)
     for (int i = 0; i < 5; i++) {
         if (!guessProcessed[i]) {
             bool found = false;
@@ -60,107 +145,43 @@ string checkGuess(const string& targetWord, const string& guess,
             }
             if (!found) {
                 gray.push_back(guess[i]);
-                result[i] = 'X';  // Letter not in word
+                result[i] = 'X';
             }
         }
     }
-
     return result;
 }
 
-void playGame() {
-    string targetWord = getRandomWord();
-    string guess;
-    vector<char> gLetters;
-    vector<char> yLetters;
-    vector<char> xLetters;
-    
-    int attempts = 6;
-    int attemptCount = 0;
-    int hintCount = 2;
-
-    cout << "\n=== Wordle Game ===" << endl;
-    cout << "Guess the 5-letter word. You have " << attempts << " attempts." << endl;
-    cout << "Feedback: G = correct position, Y = correct letter wrong position, X = not in word" << endl;
-    cout << "--------------------------------" << endl;
-
-    while (attemptCount < attempts) {
-        cout << "\nType /hint for a hint. Hints remaining: " << hintCount;
-        cout << "\nAttempt " << (attemptCount + 1) << "/" << attempts << ": ";
-        cout.flush();
-        
-        if (!(cin >> guess)) {
-            if (cin.eof()) {
-                cout << "\nGame ended (EOF)." << endl;
-                return;
-            }
-            cin.clear();
-            cout << "Invalid input. Please try again." << endl;
-            continue;
-        }
-
-        // hint mechanism
-        if (guess == "/hint" && hintCount > 0) {
-            hint(targetWord, gLetters);
-            hintCount--;
-            continue;
-        } 
-        else if (guess == "/hint" && hintCount == 0) {
-            cout << ":( Sorry, all hints used" << endl;
-            continue;
-        }
-
-        // Validate input
-        if (guess.length() != 5) {
-            cout << "Please enter exactly 5 letters." << endl;
-            continue;
-        }
-
-        // Convert to lowercase
-        transform(guess.begin(), guess.end(), guess.begin(), ::tolower);
-
-        // Check if all characters are alphabetic
-        bool validInput = true;
-        for (char c : guess) {
-            if (!isalpha(c)) {
-                validInput = false;
-                break;
-            }
-        }
-
-        if (!validInput) {
-            cout << "Please enter only alphabetic characters." << endl;
-            continue;
-        }
-
-        string feedback = checkGuess(targetWord, guess, gLetters, yLetters, xLetters);
-        cout << "Feedback: " << feedback << endl;
-
-        if (guess == targetWord) {
-            cout << "\nCongratulations! You guessed the word: " << targetWord << endl;
-            return;
-        }
-
-        attemptCount++;
+void printKeyboard(const vector<char>& green, const vector<char>& yellow, const vector<char>& gray) {
+    char status[26] = {0};
+    for (char c : green) status[tolower(c) - 'a'] = 'G';
+    for (char c : yellow) {
+        int idx = tolower(c) - 'a';
+        if (status[idx] != 'G') status[idx] = 'Y';
+    }
+    for (char c : gray) {
+        int idx = tolower(c) - 'a';
+        if (status[idx] == 0) status[idx] = 'X';
     }
 
-    cout << "\n❌ Game Over! The word was: " << targetWord << endl;
-}
+    const char* RESET = "\033[0m";
+    const char* GREEN = "\033[32;1m";
+    const char* YELLOW = "\033[33;1m";
+    const char* GRAY = "\033[90m";
 
-int main() {
-    srand(static_cast<unsigned>(time(0)));
-
-    char playAgain = 'y';
-    while (playAgain == 'y' || playAgain == 'Y') {
-        playGame();
-
-        cout << "\nDo you want to play again? (y/n): ";
-        if (!(cin >> playAgain)) {
-            // EOF reached, exit gracefully
-            break;
+    const char* rows[] = {"QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM"};
+    cout << "\nKeyboard:\n";
+    for (int r = 0; r < 3; ++r) {
+        for (size_t i = 0; i < strlen(rows[r]); ++i) {
+            char ch = rows[r][i];
+            int idx = ch - 'A';
+            const char* color = RESET;
+            if (status[idx] == 'G') color = GREEN;
+            else if (status[idx] == 'Y') color = YELLOW;
+            else if (status[idx] == 'X') color = GRAY;
+            cout << color << ch << RESET << " ";
         }
+        cout << "\n";
     }
-
-    cout << "Thanks for playing!" << endl;
-    return 0;
+    cout << "  (Green=correct position, Yellow=wrong position, Gray=not in word)\n" << endl;
 }
